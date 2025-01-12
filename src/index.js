@@ -38,22 +38,24 @@ function warmup4iePlatform(log, config, api) {
 warmup4iePlatform.prototype = {
   accessories: function (callback) {
     this.log("Logging into warmup4ie...");
-    // debug("Rooms", this);
+    debug("Rooms", this);
     thermostats = new Warmup4ie(this, function (err, rooms) {
-      if (!err) {
-        this.log("Found %s room(s)", rooms.length);
-        rooms.forEach(function (room) {
-          this.log("Adding", room.roomName);
-          var newAccessory = new Warmup4ieAccessory(this, room.roomName, thermostats.room[room.roomId]);
-          // myAccessories[room.roomId] = newAccessory;
-          myAccessories.push(newAccessory);
-          // debug("myAccessories", myAccessories);
-        }.bind(this));
-        callback(myAccessories);
+      // Added checks for err, rooms, or empty array:
+      if (err || !rooms || !rooms.length) {
+        this.log("Error loading warmup4ie rooms:", err || "No rooms returned from API");
+        // Return an empty array so Homebridge doesn't crash
+        return callback([]);
       }
-      // pollDevices.call(this);
+    
+      // If rooms is valid, proceed as normal:
+      this.log("Found %s room(s)", rooms.length);
+      rooms.forEach(function (room) {
+        this.log("Adding", room.roomName);
+        var newAccessory = new Warmup4ieAccessory(this, room.roomName, thermostats.room[room.roomId]);
+        myAccessories.push(newAccessory);
+      }.bind(this));
+      callback(myAccessories);
     }.bind(this));
-
     setInterval(pollDevices.bind(this), this.refresh * 1000); // Poll every minute
   }
 };

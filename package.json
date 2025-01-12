@@ -1,7 +1,7 @@
 {
   "name": "homebridge-warmup4ie",
-  "version": "0.1.1",
-  "description": "Warmup4IE Thermostat Plugin Homebridge",
+  "version": "0.1.2",
+  "description": "Warmup4IE Thermostat Plugin Homebridge (slycke)",
   "main": "src/index.js",
   "scripts": {
     "lint": "eslint --max-warnings=0 .",
@@ -51,7 +51,7 @@
     ],
     "ext": "js",
     "ignore": [],
-    "exec": "DEBUG=HAP-NodeJS*,warmup4ie* ~/npm/bin/homebridge -U ./test/hbConfig -I -Q -T -D -P .",
+    "exec": "DEBUG=HAP-NodeJS*,warmup4ie* homebridge -U ./test/hbConfig -I -Q -T -D -P .",
     "signal": "SIGTERM",
     "env": {
       "NODE_OPTIONS": "--trace-warnings"
