@@ -1,0 +1,41 @@
+{
+  "pluginAlias": "warmup4ie",
+  "pluginType": "platform",
+  "singular": true,
+  "strictValidation": false,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true,
+        "default": "Warmup thermostat"
+      },
+      "username": {
+        "title": "Username",
+        "type": "string",
+        "default": "xxx",
+        "description": "Set user name on Warmup API"
+      },
+      "password": {
+        "title": "Password",
+        "type": "string",
+        "default": "xxx",
+        "description": "Set password on Warmup API"
+      },
+      "refresh": {
+        "title": "Refresh frequency",
+        "type": "integer",
+        "default": 60,
+        "description": "Refresh frequency in seconds"
+      },
+      "duration": {
+        "title": "Override Duration",
+        "type": "integer",
+        "default": 60,
+        "description": "Duration of overrides in minutes"
+      }
+    }
+  }
+}
