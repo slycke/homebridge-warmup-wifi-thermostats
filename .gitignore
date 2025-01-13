@@ -1,15 +1,3 @@
-npm-debug.log
 
-*.zip
 node_modules
-password*
-README.md.toc.*
-README.md.orig.*
-Troubleshooting.md.toc.*
-Troubleshooting.md.orig.*
-test/hbConfig/.uix-dashboard.json
-test/hbConfig/.uix-secrets
-/test/hbConfig/accessories
-/test/hbConfig/persist
-test/hbConfig/config.json
-/test/hbConfig/backups
+/test/

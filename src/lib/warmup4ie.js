@@ -63,9 +63,9 @@ class Warmup4IE {
       try {
         const json = JSON.parse(response.body);
         // Log the entire API response:
-        // console.log('Warmup4IE API request body:', JSON.stringify(body));
-        // console.log('Warmup4IE API raw response:', response.body);
-        // console.log('Warmup4IE API parsed JSON:', JSON.stringify(json, null, 2));
+        // debug('Warmup4IE API request body:', JSON.stringify(body));
+        // debug('Warmup4IE API raw response:', response.body);
+        // debug('Warmup4IE API parsed JSON:', JSON.stringify(json, null, 2));
         callback(null, json);
       } catch (ex) {
         console.error('JSON Parsing Error:', ex);
@@ -200,7 +200,7 @@ class Warmup4IE {
         if (err) {
           console.error("[ERROR] Failed to refresh devices after state change:", err);
         } else {
-          console.log("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          debug("[DEBUG] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
@@ -226,7 +226,7 @@ class Warmup4IE {
     };
   
     // this.room[roomId] = null;
-    // console.log("[DEBUG] Override request body:", JSON.stringify(body, null, 2));
+    // debug("[DEBUG] Override request body:", JSON.stringify(body, null, 2));
     this._sendRequest(body, (err, json) => {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
