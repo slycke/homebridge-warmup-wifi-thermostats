@@ -1,7 +1,7 @@
 {
-  "name": "homebridge-warmup4ie",
-  "version": "0.1.2",
-  "description": "Warmup4IE Thermostat Plugin Homebridge (slycke)",
+  "name": "warmup-wifi-thermostats",
+  "version": "0.0.1",
+  "description": "Warmup Smart WiFi Thermostats Plugin for Homebridge",
   "main": "src/index.js",
   "scripts": {
     "lint": "eslint --max-warnings=0 .",
@@ -15,7 +15,7 @@
     "url": "git+https://github.com/NorthernMan54/homebridge-warmup4ie.git"
   },
   "keywords": [
-    "warmup4ie",
+    "warmup-wifi-thermostats",
     "homebridge-plugin"
   ],
   "engines": {
@@ -39,7 +39,7 @@
     "jest": "^29.7.0",
     "nodemon": "^3.1.7"
   },
-  "author": "NorthernMan54",
+  "author": "slycke",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/NorthernMan54/homebridge-warmup4ie/issues"
