@@ -74,7 +74,7 @@ If the thermostat is in Fixed temperature mode, changes to the temperature set a
 
 ==> HomeKit should show "HEAT". If HomeKit is set to HEAT the thermostate should be set to these values.
 
-## Settin target temperature setpoint
+## Setting target temperature setpoint
 `OVERRIDE`: Thermostat set to run its program automatically, but with a temporary override for a certain Duration (configurable). If system set to protect against frost.
 *   "locMode": "frost",
 *   "roomMode": "program",
