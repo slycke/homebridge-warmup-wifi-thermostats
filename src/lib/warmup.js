@@ -1,5 +1,4 @@
-const debug = require('debug')('warmup4ie:lib');
-const request = require('request');
+import axios from 'axios';
 
 const TOKEN_URL = 'https://api.warmup.com/apps/app/v1';
 const APP_TOKEN = 'M=;He<Xtg"$}4N%5k{$:PD+WA"]D<;#PriteY|VTuA>_iyhs+vA"4lic{6-LqNM:';
@@ -17,8 +16,9 @@ const HEADER = {
 let WarmupAccessToken = null;
 let LocId = null;
 
-class Warmup4IE {
+export class WarmupThermostats {
   constructor(options, callback) {
+    this.log = options.log;
     this._username = options.username;
     this._password = options.password;
     this._location_name = options.location;
@@ -46,33 +46,28 @@ class Warmup4IE {
   }
 
   _sendRequest(body, callback) {
-    request({
+    axios({
       method: 'POST',
       url: TOKEN_URL,
       timeout: 10000,
-      strictSSL: false,
+      // strictSSL: false,
       headers: HEADER,
-      body: JSON.stringify(body)
-    }, (err, response) => {
-      if (err || response.statusCode !== 200) {
-        const error = err || new Error(`HTTP Error: ${response.statusCode}`);
-        console.error(error);
-        return callback(error);
-      }
-
-      try {
-        const json = JSON.parse(response.body);
-        // Log the entire API response:
-        // debug('Warmup4IE API request body:', JSON.stringify(body));
-        // debug('Warmup4IE API raw response:', response.body);
-        // debug('Warmup4IE API parsed JSON:', JSON.stringify(json, null, 2));
-        callback(null, json);
-      } catch (ex) {
-        console.error('JSON Parsing Error:', ex);
-        callback(ex);
-      }
-    });
-  }
+      data: body
+    })
+      .then(response => {
+        if (response.status !== 200) {
+          const error = new Error(`HTTP Error: ${response.status}`);
+          this.log.error(error);
+          return callback(error);
+        }
+        // handle success
+        callback(null, response.data);
+      })
+      .catch(error => {
+        this.log.error(error);
+        callback(error);
+      });
+    }
 
   _generateAccessToken(callback) {
     const body = {
@@ -159,6 +154,11 @@ class Warmup4IE {
         }
       }
     };
+
+      // When setting off, add fixedTemp as an empty string
+  if (locMode === "off") {
+    body.request.values.fixedTemp = "";
+  }
   
     // Clear cached data for this location (if applicable)
     this.room[locationId] = null;
@@ -166,9 +166,9 @@ class Warmup4IE {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
         if (err) {
-          console.error("[ERROR] Failed to refresh devices after state change:", err);
+          this.log.error("[ERROR] Failed to refresh devices after state change:", err);
         } else {
-          console.log("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          this.log.debug("[DEBUG] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
@@ -198,9 +198,9 @@ class Warmup4IE {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
         if (err) {
-          console.error("[ERROR] Failed to refresh devices after state change:", err);
+          this.error("[ERROR] Failed to refresh devices after state change:", err);
         } else {
-          debug("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          this.log.info("[DEBUG] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
@@ -225,15 +225,13 @@ class Warmup4IE {
       }
     };
   
-    // this.room[roomId] = null;
-    // debug("[DEBUG] Override request body:", JSON.stringify(body, null, 2));
     this._sendRequest(body, (err, json) => {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
         if (err) {
-          console.error("[ERROR] Failed to refresh devices after state change:", err);
+          this.error("[ERROR] Failed to refresh devices after state change:", err);
         } else {
-          console.log("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          this.log.info("[DEBUG] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
@@ -262,13 +260,12 @@ class Warmup4IE {
   
   setLocationToOff(locationId, callback) {
     // Set the location mode to "off"
+    this.log.debug("Sending setLocationToOff for location", locationId);
     this._setLocationMode(locationId, "off", callback);
   }
 
   destroy() {
-    console.log('Destroying Warmup4IE');
+    this.log.info('Destroying Warmup Thermostats');
     clearInterval(this.refreshInterval);
   }
 }
-
-module.exports = { Warmup4IE };
