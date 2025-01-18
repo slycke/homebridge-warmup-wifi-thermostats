@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "warmup4ie",
+  "pluginAlias": "warmup-wifi-thermostats",
   "pluginType": "platform",
   "singular": true,
   "strictValidation": false,
