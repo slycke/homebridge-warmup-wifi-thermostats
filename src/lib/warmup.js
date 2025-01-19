@@ -200,7 +200,7 @@ export class WarmupThermostats {
         if (err) {
           this.error("[ERROR _setTemperature] Failed to refresh devices after state change:", err);
         } else {
-          this.log.info("[DEBUG _setTemperature] Successfully refreshed devices after state change:", rooms);
+          this.log.debug("[DEBUG _setTemperature] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
