@@ -10,7 +10,7 @@ const HEADER = {
   'content-type': 'application/json',
   'app-token': APP_TOKEN,
   'app-version': '1.8.1',
-  'accept-language': 'de-de'
+  'accept-language': 'de-de',
 };
 
 let WarmupAccessToken = null;
@@ -52,7 +52,7 @@ export class WarmupThermostats {
       timeout: 10000,
       // strictSSL: false,
       headers: HEADER,
-      data: body
+      data: body,
     })
       .then(response => {
         if (response.status !== 200) {
@@ -67,7 +67,7 @@ export class WarmupThermostats {
         this.log.error(error);
         callback(error);
       });
-    }
+  }
 
   _generateAccessToken(callback) {
     const body = {
@@ -75,12 +75,14 @@ export class WarmupThermostats {
         email: this._username,
         password: this._password,
         method: 'userLogin',
-        appId: 'WARMUP-APP-V001'
-      }
+        appId: 'WARMUP-APP-V001',
+      },
     };
 
     this._sendRequest(body, (err, json) => {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
 
       WarmupAccessToken = json.response.token;
       callback(null);
@@ -88,20 +90,24 @@ export class WarmupThermostats {
   }
 
   _getLocations(callback) {
-    if (!WarmupAccessToken) return callback(new Error('Missing access token.'));
+    if (!WarmupAccessToken) {
+      return callback(new Error('Missing access token.'));
+    }
 
     const body = {
       account: {
         email: this._username,
-        token: WarmupAccessToken
+        token: WarmupAccessToken,
       },
       request: {
-        method: 'getLocations'
-      }
+        method: 'getLocations',
+      },
     };
 
     this._sendRequest(body, (err, json) => {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
 
       LocId = json.response.locations[0]?.id;
       callback(null);
@@ -115,19 +121,21 @@ export class WarmupThermostats {
   
     const body = {
       account: { email: this._username, token: WarmupAccessToken },
-      request: { method: 'getRooms', locId: LocId }
+      request: { method: 'getRooms', locId: LocId },
     };
   
     this._sendRequest(body, (err, json) => {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
   
       const locMode = json.response.locMode;          // e.g. "off", "frost", etc.
       const rooms = json.response.rooms || [];
   
       rooms.forEach(room => {
         // If location itself is set to "off", force each room to "off"
-        if (locMode === "off") {
-          room.runMode = "off";
+        if (locMode === 'off') {
+          room.runMode = 'off';
         }
         this.room[room.roomId] = room;
       });
@@ -140,35 +148,37 @@ export class WarmupThermostats {
     const body = {
       account: {
         email: this._username,
-        token: WarmupAccessToken
+        token: WarmupAccessToken,
       },
       request: {
         method: 'setModes',
         values: {
           locId: locationId,
           locMode: locMode,
-          holEnd: "-",
-          holStart: "-",
-          holTemp: "-",
-          geoMode: "0"
-        }
-      }
+          holEnd: '-',
+          holStart: '-',
+          holTemp: '-',
+          geoMode: '0',
+        },
+      },
     };
 
-      // When setting off, add fixedTemp as an empty string
-  if (locMode === "off") {
-    body.request.values.fixedTemp = "";
-  }
+    // When setting off, add fixedTemp as an empty string
+    if (locMode === 'off') {
+      body.request.values.fixedTemp = '';
+    }
   
     // Clear cached data for this location (if applicable)
     this.room[locationId] = null;
     this._sendRequest(body, (err, json) => {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
       this.getStatus((err, rooms) => {
         if (err) {
-          this.log.error("[ERROR _setLocationMode] Failed to refresh devices after state change:", err);
+          this.log.error('[ERROR _setLocationMode] Failed to refresh devices after state change:', err);
         } else {
-          this.log.debug("[DEBUG _setLocationMode] Successfully refreshed devices after state change:", rooms);
+          this.log.debug('[DEBUG _setLocationMode] Successfully refreshed devices after state change:', rooms);
         }
       });
       callback(null, json);
@@ -176,31 +186,35 @@ export class WarmupThermostats {
   }
 
   _setTemperature(roomId, mode, temperature, callback) {
-    if (!WarmupAccessToken) return callback(new Error("Missing access token"));
+    if (!WarmupAccessToken) {
+      return callback(new Error('Missing access token'));
+    }
     const body = {
       account: {
         email: this._username,
-        token: WarmupAccessToken
+        token: WarmupAccessToken,
       },
       request: {
         method: 'setProgramme',
         roomId: roomId,
-        roomMode: mode  // "prog" (AUTO) or "fixed" (MANUAL)
-      }
+        roomMode: mode,  // "prog" (AUTO) or "fixed" (MANUAL)
+      },
     };
     // If a temperature is provided, include it. (API expects a string, in tenths of a degree, padded to three digits.)
     if (temperature !== undefined && temperature !== null) {
       body.request.fixed = {
-        fixedTemp: String(parseInt(temperature * 10, 10)).padStart(3, '0')
+        fixedTemp: String(parseInt(temperature * 10, 10)).padStart(3, '0'),
       };
     }
     this._sendRequest(body, (err, json) => {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
       this.getStatus((err, rooms) => {
         if (err) {
-          this.error("[ERROR _setTemperature] Failed to refresh devices after state change:", err);
+          this.error('[ERROR _setTemperature] Failed to refresh devices after state change:', err);
         } else {
-          this.log.debug("[DEBUG _setTemperature] Successfully refreshed devices after state change:", rooms);
+          this.log.debug('[DEBUG _setTemperature] Successfully refreshed devices after state change:', rooms);
         }
       });
       callback(null, json);
@@ -214,24 +228,26 @@ export class WarmupThermostats {
     const body = {
       account: {
         email: this._username,
-        token: WarmupAccessToken
+        token: WarmupAccessToken,
       },
       request: {
         method: 'setOverride',
         rooms: [roomId],
         type: 3,  // Assumed constant for override
         temp: String(parseInt(temperature * 10, 10)).padStart(3, '0'),
-        until: until
-      }
+        until: until,
+      },
     };
   
     this._sendRequest(body, (err, json) => {
-      if (err) return callback(err);
+      if (err) {
+        return callback(err);
+      }
       this.getStatus((err, rooms) => {
         if (err) {
-          this.error("[ERROR setOverride] Failed to refresh devices after state change:", err);
+          this.error('[ERROR setOverride] Failed to refresh devices after state change:', err);
         } else {
-          this.log.info("[DEBUG setOverride] Successfully refreshed devices after state change:", rooms);
+          this.log.info('[DEBUG setOverride] Successfully refreshed devices after state change:', rooms);
         }
       });
       callback(null, json);
@@ -240,28 +256,28 @@ export class WarmupThermostats {
 
   setTemperatureToAuto(roomId, callback) {
     // Set room mode to AUTO; we use "prog" here.
-    return this._setTemperature(roomId, "prog", null, callback);
+    return this._setTemperature(roomId, 'prog', null, callback);
   }
   
   setTemperatureToManual(roomId, callback) {
     // Set room mode to manual but do not change the setpoint.
-    return this._setTemperature(roomId, "fixed", null, callback);
+    return this._setTemperature(roomId, 'fixed', null, callback);
   }
   
   setNewTemperature(roomId, newTemperature, callback) {
     // Set room mode to manual AND update the fixed temperature.
-    return this._setTemperature(roomId, "fixed", newTemperature, callback);
+    return this._setTemperature(roomId, 'fixed', newTemperature, callback);
   }
 
   setLocationToFrost(locationId, callback) {
     // Set the location mode to "frost"
-    this._setLocationMode(locationId, "frost", callback);
+    this._setLocationMode(locationId, 'frost', callback);
   }
   
   setLocationToOff(locationId, callback) {
     // Set the location mode to "off"
-    this.log.debug("Sending setLocationToOff for location", locationId);
-    this._setLocationMode(locationId, "off", callback);
+    this.log.debug('Sending setLocationToOff for location', locationId);
+    this._setLocationMode(locationId, 'off', callback);
   }
 
   destroy() {
