@@ -166,9 +166,9 @@ export class WarmupThermostats {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
         if (err) {
-          this.log.error("[ERROR] Failed to refresh devices after state change:", err);
+          this.log.error("[ERROR _setLocationMode] Failed to refresh devices after state change:", err);
         } else {
-          this.log.debug("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          this.log.debug("[DEBUG _setLocationMode] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
@@ -198,9 +198,9 @@ export class WarmupThermostats {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
         if (err) {
-          this.error("[ERROR] Failed to refresh devices after state change:", err);
+          this.error("[ERROR _setTemperature] Failed to refresh devices after state change:", err);
         } else {
-          this.log.info("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          this.log.info("[DEBUG _setTemperature] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);
@@ -229,9 +229,9 @@ export class WarmupThermostats {
       if (err) return callback(err);
       this.getStatus((err, rooms) => {
         if (err) {
-          this.error("[ERROR] Failed to refresh devices after state change:", err);
+          this.error("[ERROR setOverride] Failed to refresh devices after state change:", err);
         } else {
-          this.log.info("[DEBUG] Successfully refreshed devices after state change:", rooms);
+          this.log.info("[DEBUG setOverride] Successfully refreshed devices after state change:", rooms);
         }
       });
       callback(null, json);

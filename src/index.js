@@ -93,13 +93,13 @@ warmupWiFiThermostatsPlatform.prototype = {
 
     const service = acc.thermostatService;
 
-    this.log.debug("[DEBUG] updateStatus for room:", room.roomName);
-    this.log.debug("[DEBUG] API values → locMode:", room.locMode, ", roomMode:", room.roomMode, ", runMode:", room.runMode);
-    this.log.debug("[DEBUG] Temperature values → targetTemp:", room.targetTemp, ", currentTemp:", room.currentTemp, ", airTemp:", room.airTemp);
+    this.log.debug("[DEBUG updateStatus] For room:", room.roomName);
+    this.log.debug("[DEBUG updateStatus] API values → locMode:", room.locMode, ", roomMode:", room.roomMode, ", runMode:", room.runMode);
+    this.log.debug("[DEBUG updateStatus] Temperature values → targetTemp:", room.targetTemp, ", currentTemp:", room.currentTemp, ", airTemp:", room.airTemp);
 
     // Handle unexpected states
     if (!room.runMode || !room.roomMode) {
-      this.log.warn("[WARN] Unexpected room state: Missing runMode or roomMode. Defaulting to OFF.");
+      this.log.warn("[WARN updateStatus] Unexpected room state: Missing runMode or roomMode. Defaulting to OFF.");
       service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(0); // OFF
       service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(0); // OFF
       return;
@@ -109,14 +109,13 @@ warmupWiFiThermostatsPlatform.prototype = {
     if (room.runMode === "override") {
       acc.room.overrideTemp = room.overrideTemp;
       acc.room.overrideDur = room.overrideDur;
-      this.log.debug("[DEBUG] Updating accessory local state with API override data:", {
+      this.log.debug("[DEBUG updateStatus] Updating accessory local state with API override data:", {
         overrideTemp: room.overrideTemp,
         overrideDur: room.overrideDur,
       });
     }
 
     // Update temperature characteristics
-    // Update the current temperature first.
     service.getCharacteristic(Characteristic.CurrentTemperature)
       .updateValue(Number(room.currentTemp / 10));
 
@@ -125,25 +124,32 @@ warmupWiFiThermostatsPlatform.prototype = {
       ? Number(room.overrideTemp / 10)
       : Number(room.targetTemp / 10);
 
-    service.getCharacteristic(Characteristic.TargetTemperature)
-      .updateValue(displayTarget);
-    this.log.info(`Room "${room.roomName}": Updated TargetTemperature → ${displayTarget}`);
+    // Only update if the cached target is undefined (first run) or different from displayTarget.
+    if (acc.cachedTarget === undefined || acc.cachedTarget !== displayTarget) {
+      service.getCharacteristic(Characteristic.TargetTemperature)
+        .updateValue(displayTarget);
+      this.log.info(`[updateStatus] Room "${room.roomName}": Updated TargetTemperature from ${acc.cachedTarget} to ${displayTarget}`);
+      // Store the new value in the cache for future comparisons.
+      acc.cachedTarget = displayTarget;
+    } else {
+      this.log.debug(`[DEBUG updateStatus] Room "${room.roomName}": No change in TargetTemperature. Previous targetTemp ${acc.cachedTarget} New targetTemp: ${displayTarget}`);
+    }
 
     // Map the API mode to HomeKit target state.
     const hkTargetState = mapRoomToHomeKit(room);
-    this.log.debug("[DEBUG] Mapped HomeKit TargetHeatingCoolingState =", hkTargetState);
+    this.log.debug("[DEBUG updateStatus] Mapped HomeKit TargetHeatingCoolingState =", hkTargetState);
     service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(hkTargetState);
 
     // For current state, use 0 for Off, otherwise 1 (heating).
     const hkCurrentState = (hkTargetState === 0) ? 0 : 1;
     service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(hkCurrentState);
-    this.log.debug("[DEBUG] Updated CurrentHeatingCoolingState →", hkCurrentState);
+    this.log.debug("[DEBUG updateStatus] Updated CurrentHeatingCoolingState →", hkCurrentState);
 
     // Update the separate air temperature sensor.
     if (acc.temperatureService) {
       acc.temperatureService.getCharacteristic(Characteristic.CurrentTemperature)
         .updateValue(Number(room.airTemp / 10));
-      this.log.debug("[DEBUG] Updated air temperature sensor →", Number(room.airTemp / 10));
+      this.log.debug("[DEBUG updateStatus] Updated air temperature sensor →", Number(room.airTemp / 10));
     }
   }
 }
@@ -167,14 +173,16 @@ function WarmupThermostatAccessory(that, name, room) {
   this.username = that.username;
   this.password = that.password;
   this.room = room;
-  //  this.log_event_counter = 0;
   this.roomId = room.roomId;
+  // Add a cachedTarget property. Initially, set it to the target temperature from the API.
+  this.cachedTargetTemp = (room.runMode === "override")
+    ? Number(room.overrideTemp / 10)
+    : Number(room.targetTemp / 10);
 }
 
 WarmupThermostatAccessory.prototype = {
-
   setTargetHeatingCooling: function (value, callback) {
-    this.log.debug("Setting system switch for", this.name, "to", value);
+    this.log.debug("[DEBUG] Setting system switch for", this.name, "to", value);
     this.log.debug("[DEBUG] setTargetHeatingCooling for", this.name, "value =", value);
     // value: 0 = Off, 1 = Heat, 2 = Cool (treated as Heat), 3 = Auto.
     switch (value) {
@@ -208,19 +216,20 @@ WarmupThermostatAccessory.prototype = {
   },
 
   setTargetTemperature: function (value, callback) {
+    this.log.debug("[DEBUG setTargetTemperature] setTargetTemperature called with value:", value);
     // this.log.debug("[DEBUG] Full room state at setTargetTemperature execution:", JSON.stringify(this.room, null, 2));
 
     // Synchronize the state with the API
     thermostats.getStatus((err, rooms) => {
       if (err) {
-        this.log.error("[ERROR] Failed to synchronize room state:", err);
+        this.log.error("[ERROR setTargetTemperature] Failed to synchronize room state:", err);
         return callback(err);
       }
 
       // Find the latest state for this room
       const updatedRoom = rooms.find((r) => r.roomId === this.roomId);
       if (!updatedRoom) {
-        this.log.error("[ERROR] Room not found in updated state.");
+        this.log.error("[ERROR setTargetTemperature] Room not found in updated state.");
         return callback(new Error("Room not found in updated state."));
       }
 
@@ -228,59 +237,64 @@ WarmupThermostatAccessory.prototype = {
       this.room = updatedRoom;
       // this.log.debug("[DEBUG] Synchronized room state:", JSON.stringify(this.room, null, 2));
 
-      // Apply the logic
-      this._applyTargetTemperatureLogic(value, callback);
+      this._applyTargetTemperature(value, callback);
     });
   },
 
-  _applyTargetTemperatureLogic: function (value, callback) {
-    this.log.debug(`[DEBUG] Setting target temperature for ${this.name} to ${value}°`);
-    this.log.debug(`[DEBUG] Current State → locMode: ${this.room.locMode}, roomMode: ${this.room.roomMode}, runMode: ${this.room.runMode}`);
+  _applyTargetTemperature: function (value, callback) {
+    this.log.debug(`[DEBUG _applyTargetTemperature] Setting target temperature for ${this.name} to ${value}°`);
+    this.log.debug(`[DEBUG _applyTargetTemperature] Current State → locMode: ${this.room.locMode}, roomMode: ${this.room.roomMode}, runMode: ${this.room.runMode}`);
 
     if (this.room.roomMode === "program" && (this.room.runMode === "schedule" || this.room.runMode === "override")) {
       // AUTO or OVERRIDE → Set an override
+      this.log.debug(`[DEBUG _applyTargetTemperature] Sending setOverride command for ${this.name} with value ${value}`);
       thermostats.setOverride(this.roomId, value, (err, json) => {
         if (err) {
-          this.log.error("[ERROR] Failed to set override in AUTO mode:", err);
+          this.log.error("[ERROR _applyTargetTemperature] Failed to set override in AUTO mode:", err);
           return callback(err);
         }
-        this.log.debug("[DEBUG] Override temperature set in AUTO mode:", json);
+        this.log.debug("[DEBUG _applyTargetTemperature] Override temperature set in AUTO mode:", json);
         callback(null);
       });
     } else if (this.room.roomMode === "fixed" && this.room.runMode === "fixed") {
       // FIXED → Update the fixed temperature
+      this.log.debug(`[DEBUG _applyTargetTemperature] Sending setNewTemperature command for ${this.name} with value ${value}`);
       thermostats.setNewTemperature(this.roomId, value, (err, json) => {
         if (err) {
-          this.log.error("[ERROR] Failed to update fixed temperature:", err);
+          this.log.error("[ERROR _applyTargetTemperature] Failed to update fixed temperature:", err);
           return callback(err);
         }
-        this.log.debug("[DEBUG] Fixed temperature updated:", json);
+        this.log.debug("[DEBUG _applyTargetTemperature] Fixed temperature updated:", json);
         callback(null);
       });
     } else {
       // Fallback for unexpected states
-      this.log.warn("[WARN] Unhandled state for target temperature. Defaulting to override.");
+      this.log.warn("[WARN _applyTargetTemperature] Unhandled state for target temperature. Defaulting to override.");
+      this.log.debug(`[DEBUG _applyTargetTemperature] Sending setOverride command for ${this.name} with value ${value}`);
       thermostats.setOverride(this.roomId, value, (err, json) => {
         if (err) {
-          this.log.error("[ERROR] Fallback failed to set override:", err);
+          this.log.error("[ERROR _applyTargetTemperature] Fallback failed to set override:", err);
           return callback(err);
         }
-        this.log.debug("[DEBUG] Fallback: Override temperature set:", json);
+        this.log.debug("[DEBUG _applyTargetTemperature] Fallback: Override temperature set:", json);
         callback(null);
       });
     }
   },
 
   getServices: function () {
-    var informationService = new Service.AccessoryInformation();
+    this.log.debug("[DEBUG getServices] ============ Retrieving the accessory’s services.");
 
+    // --- Accessory Information Service ---
+    const informationService = new Service.AccessoryInformation();
     informationService
       .setCharacteristic(Characteristic.Manufacturer, "warmup-wifi-thermostats")
       .setCharacteristic(Characteristic.SerialNumber, hostname + "-" + this.name)
     //  .setCharacteristic(Characteristic.FirmwareRevision, require('../package.json').version);
-    // Thermostat Service
-    //
+  
+    // --- Temperature Sensor Service ---
     this.temperatureService = new Service.TemperatureSensor(this.name + " Air");
+    const currentAirTemp = Number(this.room.airTemp / 10);
     this.temperatureService
       .getCharacteristic(Characteristic.CurrentTemperature)
       .setProps({
@@ -288,83 +302,60 @@ WarmupThermostatAccessory.prototype = {
         maxValue: 100
       });
     this.temperatureService.getCharacteristic(Characteristic.CurrentTemperature)
-      .updateValue(Number(this.room.airTemp / 10));
+      .updateValue(currentAirTemp);
 
+    // --- Thermostat Service ---
     this.thermostatService = new Service.Thermostat(this.name);
     this.thermostatService.isPrimaryService = true;
-
+    // Limit valid values; cool (2) is removed.
     this.thermostatService
       .getCharacteristic(Characteristic.TargetHeatingCoolingState)
       .setProps({
         validValues: [0, 1, 3]
       });
-
+      
+    // Set event handlers for changes from HomeKit.
     this.thermostatService
       .getCharacteristic(Characteristic.TargetHeatingCoolingState)
       .on('set', this.setTargetHeatingCooling.bind(this));
-
     this.thermostatService
       .getCharacteristic(Characteristic.TargetTemperature)
       .on('set', this.setTargetTemperature.bind(this));
 
+    // Set temperature limits for the TargetTemperature characteristic.
     this.thermostatService
       .getCharacteristic(Characteristic.TargetTemperature)
       .setProps({
         minValue: this.room.minTemp / 10,
         maxValue: this.room.maxTemp / 10
       });
+    
+    // Update the Temperature values directly from the API data
+    const initialTargetTemp = Number(this.room.targetTemp / 10);
+    const initialCurrentTemp = Number(this.room.currentTemp / 10);
+    this.thermostatService.getCharacteristic(Characteristic.TargetTemperature).updateValue(initialTargetTemp);
+    this.thermostatService.getCharacteristic(Characteristic.CurrentTemperature).updateValue(initialCurrentTemp);
 
-    this.thermostatService
-      .getCharacteristic(Characteristic.CurrentTemperature)
-      .setProps({
-        minValue: -100,
-        maxValue: 100
-      });
+    // --- Direct Mapping of Warmup API runMode to HomeKit states ---
+    const mapRunModeToHomeKit = (runMode) => {
+      switch (runMode) {
+        case "off":
+          return 0;
+        case "override":
+          // Override is displayed as auto.
+          return 3;
+        case "program":
+          return 3;
+        case "fixed":
+        default:
+          return 1;
+      }
+    };
 
-    var targetTemperature = (this.room.targetTemp > this.room.minTemp ? this.room.targetTemp : this.room.minTemp);
-    this.thermostatService.getCharacteristic(Characteristic.TargetTemperature)
-      .updateValue(Number(targetTemperature / 10));
-
-    this.thermostatService.getCharacteristic(Characteristic.CurrentTemperature)
-      .updateValue(Number(this.room.currentTemp / 10));
-
-    var currentHeatingCoolingState;
-    switch (this.room.runMode) {
-      case "off":
-        currentHeatingCoolingState = 0;
-        break;
-      default:
-      case "fixed": // Heat
-      case "override": // Heat
-      case "schedule":
-        if (this.room.currentTemp < this.room.targetTemp) {
-          currentHeatingCoolingState = 1;
-        } else {
-          currentHeatingCoolingState = 0;
-        }
-        break;
-    }
-
-    this.thermostatService.getCharacteristic(Characteristic.CurrentHeatingCoolingState)
-      .updateValue(currentHeatingCoolingState);
-
-    var targetHeatingCoolingState;
-    switch (this.room.runMode) {
-      case "off":
-        targetHeatingCoolingState = 0;
-        break;
-      default:
-      case "fixed": // Heat
-      case "override": // Heat
-        targetHeatingCoolingState = 1;
-        break;
-      case "schedule":
-        targetHeatingCoolingState = 1;
-        break;
-    }
-
-    this.thermostatService.getCharacteristic(Characteristic.TargetHeatingCoolingState)
-      .updateValue(targetHeatingCoolingState);
+    const hkState = mapRunModeToHomeKit(this.room.runMode);
+    // We assume here that both the target and current states in HomeKit should mirror the device's runMode.
+    this.thermostatService.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(hkState);
+    this.thermostatService.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(hkState);
 
     return [informationService, this.thermostatService, this.temperatureService];
   }

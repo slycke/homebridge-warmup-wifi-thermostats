@@ -40,10 +40,14 @@ If the thermostat is in Fixed temperature mode, changes to the temperature set a
 ## Optional settings
 
 * `refresh` - Data polling interval in seconds, defaults to 60 seconds
-* `storage` - Storage of chart graphing data for history graphing, either fs or googleDrive, defaults to fs
 * `duration` - Duration of temperature override, defaults to 60 minutes
 
 # Changelog
+
+## version 0.0.2
+* cleanup logging and improve debug logging.
+* fix a bug in HomeKit accessory initialization.
+* updated README.
 
 ## version 0.0.1
 * enabled support of multiple thermostats (rooms)
