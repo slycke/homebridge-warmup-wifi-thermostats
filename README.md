@@ -44,6 +44,11 @@ If the thermostat is in Fixed temperature mode, changes to the temperature set a
 
 # Changelog
 
+## version 0.1.0
+* fix init of accessories
+* fix linting and Github actions
+* cleanup logging, also in debug
+
 ## version 0.0.2
 * cleanup logging and improve debug logging.
 * fix a bug in HomeKit accessory initialization.
