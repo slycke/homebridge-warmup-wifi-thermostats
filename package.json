@@ -2,7 +2,7 @@
   "name": "homebridge-warmup-wifi-thermostats",
   "displayname": "Warmup Wifi Smart Thermostats",
   "type": "module",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "The Warump Wifi Thermostats plugin allows you to access and control Warmup Smart Wifi thermostats like the 6iE, 4iE and Element.",
   "author": {
     "name": "slycke",
