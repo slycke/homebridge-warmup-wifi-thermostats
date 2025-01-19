@@ -13,7 +13,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -25,13 +24,8 @@ jobs:
       - name: Lint the project
         run: npm run lint
 
-      - name: Build the project
-        run: npm run build
-
-      - name: List, audit, fix outdated dependencies and build again
+      - name: List, audit, outdated dependencies and update
         run: |
-          npm list --outdated
-          npm audit || true  # ignore failures
-          npm audit fix || true
-          npm list --outdated
-          npm run build
+          npm outdated
+          npm audit
+          npm update
